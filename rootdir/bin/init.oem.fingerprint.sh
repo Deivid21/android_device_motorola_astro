@@ -20,7 +20,7 @@ function log {
 
 persist_fps_id=/mnt/vendor/persist/fps/vendor_id
 
-FPS_VENDOR_EGIS=egis
+FPS_VENDOR_GOODIX=goodix
 FPS_VENDOR_FPC=fpc
 FPS_VENDOR_NONE=none
 
@@ -51,9 +51,9 @@ function ident_fps {
         fi
     done
 
-    log "- install Egis driver"
-    insmod /vendor/lib/modules/ets_fps_mmi.ko
-    echo $FPS_VENDOR_EGIS > $persist_fps_id
+    log "- install Goodix driver"
+    insmod /vendor/lib/modules/goodix_fod_mmi.ko
+    echo $FPS_VENDOR_GOODIX > $persist_fps_id
     return 0
 }
 
@@ -63,14 +63,11 @@ if [ ! -f $persist_fps_id ]; then
 fi
 
 fps_vendor=$(cat $persist_fps_id)
-if [ -z $fps_vendor ]; then
-    fps_vendor=$FPS_VENDOR_NONE
-fi
 log "FPS vendor: $fps_vendor"
 
-if [ $fps_vendor == $FPS_VENDOR_EGIS ]; then
-    log "- install Egis driver"
-    insmod /vendor/lib/modules/ets_fps_mmi.ko
+if [ $fps_vendor == $FPS_VENDOR_GOODIX ]; then
+    log "- install Goodix driver"
+    insmod /vendor/lib/modules/goodix_fod_mmi.ko
     return $?
 fi
 

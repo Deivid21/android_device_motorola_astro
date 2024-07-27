@@ -16,14 +16,19 @@ function log {
 
 persist_fps_id=/mnt/vendor/persist/fps/vendor_id
 persist_fps_id2=/mnt/vendor/persist/fps/last_vendor_id
-MAX_TIMES=20
 
 if [ ! -f $persist_fps_id ]; then
     log "warn: no associated persist file found"
     return -1
 fi
+
+fps_vendor2=$(cat $persist_fps_id2)
+log "FPS vendor (last): $fps_vendor2"
+fps_vendor=$(cat $persist_fps_id)
+log "FPS vendor: $fps_vendor"
+
 FPS_VENDOR_NONE=none
-FPS_VENDOR_EGIS=egis
+FPS_VENDOR_GOODIX=goodix
 FPS_VENDOR_FPC=fpc
 
 prop_fps_status=vendor.hw.fingerprint.status
@@ -31,17 +36,6 @@ prop_persist_fps=persist.vendor.hardware.fingerprint
 
 FPS_STATUS_NONE=none
 FPS_STATUS_OK=ok
-
-fps_vendor2=$(cat $persist_fps_id2)
-if [ -z $fps_vendor2 ]; then
-    fps_vendor2=$FPS_VENDOR_NONE
-fi
-log "FPS vendor (last): $fps_vendor2"
-fps_vendor=$(cat $persist_fps_id)
-if [ -z $fps_vendor ]; then
-    fps_vendor=$FPS_VENDOR_NONE
-fi
-log "FPS vendor: $fps_vendor"
 
 if [ $fps_vendor == $FPS_STATUS_NONE ]; then
     log "warn: boot as the last FPS"
@@ -54,22 +48,18 @@ for i in $(seq 1 2)
 do
 
 setprop $prop_fps_status $FPS_STATUS_NONE
-if [ $fps == $FPS_VENDOR_FPC ]; then
+if [ $fps == $FPS_VENDOR_GOODIX ]; then
+    log "start goodix_hal"
+    start goodix_hal
+else
     log "start fps_hal"
     start fps_hal
-else
-    log "start ets_hal"
-    start ets_hal
+    fps=$FPS_VENDOR_FPC
 fi
 
 log "wait for HAL finish ..."
 fps_status=$(getprop $prop_fps_status)
-for ii in $(seq 1 $MAX_TIMES)
-do
-#    log "check fps vendor status: $fps_status"
-    if [ $fps_status != $FPS_STATUS_NONE ]; then
-        break
-    fi
+while [ $fps_status == $FPS_STATUS_NONE ]; do
     sleep 0.2
     fps_status=$(getprop $prop_fps_status)
 done
@@ -90,10 +80,10 @@ fi
 if [ $fps == $fps_vendor2 ]; then
     if [ $fps == $FPS_VENDOR_FPC ]; then
         rmmod fpc1020_mmi
-        insmod /vendor/lib/modules/ets_fps_mmi.ko
-        fps=$FPS_VENDOR_EGIS
+        insmod /vendor/lib/modules/goodix_fod_mmi.ko
+        fps=$FPS_VENDOR_GOODIX
     else
-        rmmod ets_fps_mmi
+        rmmod goodix_fod_mmi
         insmod /vendor/lib/modules/fpc1020_mmi.ko
         fps=$FPS_VENDOR_FPC
     fi

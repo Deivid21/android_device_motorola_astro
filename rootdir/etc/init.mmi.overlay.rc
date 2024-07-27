@@ -1,13 +1,14 @@
-import /vendor/etc/init/hw/init.vendor.st21nfc.rc
+service capsense_reset /system/vendor/bin/capsense_reset
+   class core
+   user system
+   group system input
+   disabled
+
+on property:sys.boot_completed=1 && property:ro.vendor.boot.radio=BRLA
+    start capsense_reset
 
 on early-init && property:ro.bootmode=mot-factory
    insmod /vendor/lib/modules/moto_f_usbnet.ko
-
-on early-init
-   exec u:r:vendor_modprobe:s0 -- /vendor/bin/modprobe -a -d /vendor/lib/modules mmi_annotate.ko mmi_info tzlog_dump.ko watchdog_cpu_ctx.ko mcDrvModule
-   # Time-consuming module, put it in the background
-   # init.mmi.rc will change charger owership on post-fs-data,load it asap
-   exec_background u:r:vendor_modprobe:s0 -- /vendor/bin/modprobe -a -d /vendor/lib/modules qpnp-smbcharger-mmi.ko
 
 on mmi-priority
    # Only high priority MMI DLKMs loaded here
@@ -15,143 +16,72 @@ on mmi-priority
    # and needs to load first. Touchscreen might need extra time
    # to perform firmware update if necessary
    setprop vendor.mmi_init.stage priority
-   exec u:r:vendor_modprobe:s0 -- /vendor/bin/modprobe -a -d /vendor/lib/modules sensors_class.ko
-   # Time-consuming modules, put them in the background
-   exec_background u:r:vendor_modprobe:s0 -- /vendor/bin/modprobe -a -d /vendor/lib/modules sx933x_sar.ko aw8695.ko
+   exec_background u:r:vendor_modprobe:s0 -- /vendor/bin/modprobe -a -d /vendor/lib/modules himax_v2_mmi_hx83102d himax_v2_mmi nova_0flash_mmi
 
 on fs
    # Majority of MMI DLKMs should be in this group
    setprop vendor.mmi_init.stage common
-   insmod /vendor/lib/modules/mmi_sys_temp.ko
-   insmod /vendor/lib/modules/watchdogtest.ko
-   insmod /vendor/lib/modules/qpnp-power-on-mmi.ko
-
-   insmod /vendor/lib/modules/focaltech_0flash_mmi.ko
-   insmod /vendor/lib/modules/nova_0flash_mmi.ko
-   insmod /vendor/lib/modules/himax_0flash_mmi_hx83112f.ko
-   insmod /vendor/lib/modules/himax_0flash_mmi.ko
-   insmod /vendor/lib/modules/st21nfc.ko
-   insmod /vendor/lib/modules/fm_ctrl.ko
-   insmod /vendor/lib/modules/wl2864c.ko
-
-   exec u:r:vendor_modprobe:s0 -- /vendor/bin/modprobe -a -d /vendor/lib/modules aw882xx_k419.ko
-
-on fs && property:ro.build.type=userdebug
-   insmod /vendor/lib/modules/mmi_sigprint.ko
+   # Load dependencies synchronously, then load the rest async
+   exec u:r:vendor_modprobe:s0 -- /vendor/bin/modprobe -a -d /vendor/lib/modules mmi_annotate mmi_info sensors_class
+   exec_background u:r:vendor_modprobe:s0 -- /vendor/bin/modprobe -a -d /vendor/lib/modules snd_smartpa_aw882xx ldc2114_keys raydium_mmi max170xx_battery_mmi exfat mmi_sys_temp tzlog_dump
+   exec_background u:r:vendor_modprobe:s0 -- /vendor/bin/modprobe -a -d /vendor/lib/modules watchdog_cpu_ctx qpnp-smbcharger-mmi sx933x_sar mmi_nfc_clk stmvl53l1 qpnp-power-on-mmi abov_sar_mmi_overlay
 
 on post-fs-data
    # Load DLKM that can afford being loaded later
    setprop vendor.mmi_init.stage late
-   #start vendor.mmi_modules
-   #wait_for_prop init.svc.vendor.mmi_modules stopped
+   start vendor.mmi_modules
+   wait_for_prop init.svc.vendor.mmi_modules stopped
    setprop vendor.mmi_init.stage complete
 
-on early-boot
-   # Goodix fingerprint
-   chown system system /dev/goodix_fp
-   chmod 0664 /dev/goodix_fp
-   mkdir /data/vendor/gf_data 0770 system system
-   mkdir /mnt/vendor/persist/goodix 0770 system system
+on init
+   # Change ownership for for HBM feature
+   chown system system /sys/class/graphics/fb0/hbm
+   # Change ownership for for ACL feature
+   chown system system /sys/class/graphics/fb0/acl
+   # Change to lzo for zram
+   write /sys/block/zram0/comp_algorithm lzo
 
 on boot
    # change permission for capsensor
    chown system system /sys/class/capsense/reset
-   chown system system /sys/class/capsense/int_state
-   # Change ownership for capsensor
-   chown root input /sys/class/sensors/Moto\ CapSense\ Ch0/enable
-   chown root input /sys/class/sensors/Moto\ CapSense\ Ch0/poll_delay
-   chown root input /sys/class/sensors/Moto\ CapSense\ Ch1/enable
-   chown root input /sys/class/sensors/Moto\ CapSense\ Ch1/poll_delay
-   chown root input /sys/class/sensors/Moto\ CapSense\ Ch2/enable
-   chown root input /sys/class/sensors/Moto\ CapSense\ Ch2/poll_delay
-   chown root input /sys/class/sensors/Moto\ CapSense\ Ch3/enable
-   chown root input /sys/class/sensors/Moto\ CapSense\ Ch3/poll_delay
-   chown root input /sys/class/sensors/Moto\ CapSense\ Ch4/enable
-   chown root input /sys/class/sensors/Moto\ CapSense\ Ch4/poll_delay
+   chown root input /sys/class/sensors/capsense_bottom/enable
+   chown root input /sys/class/sensors/capsense_bottom/poll_delay
+   chown root input /sys/class/sensors/capsense_top/enable
+   chown root input /sys/class/sensors/capsense_top/poll_delay
 
-   # Change ownership for touch gesture
-   chown root input /sys/class/sensors/dt-gesture/enable
-   chown root input /sys/class/sensors/dt-gesture/poll_delay
+   chown system system /sys/class/backlight/panel1-backlight/brightness
+   chown system system /sys/class/backlight/panel1-backlight/max_brightness
 
-   # Change ownership and permission for fm control intf
-   chown system system /sys/devices/platform/soc/soc:fm_wcn39x0/elna_en
+   # in FBE mode, /data is here
+   write /sys/block/sdb/queue/read_ahead_kb 512
 
-on boot && property:ro.bootmode=qcom
-    start vendor.stop_5g_thermal
+   # Set custom vibration strength
+   write /sys/class/leds/vibrator/gain 20
+
+    # Change permission for fingerprint sensor
+    chown system vendor_tcmd /sys/devices/platform/soc/0.fpc_fpc1020/dev_enable
+    chown system vendor_tcmd /sys/devices/platform/soc/0.fpc_fpc1020/irq
+    chown system vendor_tcmd /sys/devices/platform/soc/0.fpc_fpc1020/irq_cnt
+    chmod 0440 /sys/devices/platform/soc/0.fpc_fpc1020/irq_cnt
+
+    chmod 0777 /proc/android_touch/debug
+
+    chmod 660 /dev/cci_intf
+    chown system camera /dev/cci_intf
+
+    #Add for camera flashlight
+    chown system system /sys/class/leds/led:flash_0/brightness
+    chown system system /sys/class/leds/led:torch_0/brightness
+    chown system system /sys/class/leds/led:switch_0/brightness
+    chmod 0664 /sys/class/leds/led:flash_0/brightness
+    chmod 0664 /sys/class/leds/led:torch_0/brightness
+    chmod 0664 /sys/class/leds/led:switch_0/brightness
 
 service vendor.mmi_modules /vendor/bin/init.mmi.modules.sh
     user root
     oneshot
     disabled
 
-service capsense_reset /system/vendor/bin/capsense_reset
-   class core
-   user system
-   group system input
-   disabled
-
-on property:sys.boot_completed=1
-    start capsense_reset
-
-service vendor.vl53l1_daemon /vendor/bin/vl53l1_daemon
-    class late_start
-    user root
-    group root
-    socket vl53l1_daemon stream 660 root system
-    disabled
-
-service vendor.mmi-laser-sh /vendor/bin/init.mmi.laser.sh
-    class core
-    user root
-    oneshot
-    disabled
-
-on property:ro.vendor.tof=true
-    insmod /vendor/lib/modules/stmvl53l1.ko
-    start vendor.vl53l1_daemon
-    start vendor.mmi-laser-sh
-
-# Turn on led to indicate device on in factory mode
+#Turn on led to indicate device on in factory mode
 on property:ro.bootmode=mot-factory
-    write /sys/class/leds/charging/brightness 255
-
-# Disable modem sub6 mitigation when specific lab sim card inserted
-service vendor.stop_5g_thermal /vendor/bin/init.modem.thermal.sh
-    class core
-    user root
-    oneshot
-    disabled
-
-on property:persist.vendor.stop_5g_thermal=1
-    start vendor.stop_5g_thermal
-
-#fps dual sensor
-service vendor.ident-fps-sh /vendor/bin/init.oem.fingerprint.sh
-    class core
-    user root
-    group drmrpc system
-    oneshot
-    disabled
-
-service vendor.hal-fps-sh /vendor/bin/init.oem.fingerprint2.sh
-    class late_start
-    user root
-    group system
-    oneshot
-
-service fpc_ident /vendor/bin/hw/fpc_ident
-    class late_start
-    user system
-    group system
-    oneshot
-    disabled
-
-service egis_ident /vendor/bin/hw/egis_ident
-    class late_start
-    user system
-    group system
-    oneshot
-    disabled
-
-on post-fs-data
-    exec_start vendor.ident-fps-sh
+    write /sys/class/leds/charging/brightness 10
