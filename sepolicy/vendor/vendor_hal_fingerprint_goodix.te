@@ -1,0 +1,4 @@
+allow vendor_hal_fingerprint_goodix init:unix_stream_socket connectto;
+allow vendor_hal_fingerprint_goodix property_socket:sock_file write;
+allow vendor_hal_fingerprint_goodix uhid_device:chr_file { ioctl open write };
+allow vendor_hal_fingerprint_goodix moto_fingerprint_prop:property_service set;
