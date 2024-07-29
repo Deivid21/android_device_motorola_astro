@@ -29,7 +29,7 @@ BOARD_HAS_QCA_FM_SOC := "cherokee"
 DEVICE_MANIFEST_FILE += $(DEVICE_PATH)/manifest.xml
 
 # Kernel
-TARGET_KERNEL_CONFIG := vendor/astro_defconfig
+TARGET_KERNEL_CONFIG := astro_defconfig
 
 # Metadata
 BOARD_USES_METADATA_PARTITION := true
