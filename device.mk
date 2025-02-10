@@ -3,8 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-# Inherit from sm6225-common
-$(call inherit-product, device/motorola/sm6225-common/bengal.mk)
+# Inherit from sdm710-common
+$(call inherit-product, device/motorola/sdm710-common/bengal.mk)
 
 # A/B
 AB_OTA_PARTITIONS += \
@@ -78,4 +78,4 @@ PRODUCT_SOONG_NAMESPACES += \
     $(LOCAL_PATH)
 
 # Get non-open-source specific aspects
-$(call inherit-product, vendor/motorola/guamp/guamp-vendor.mk)
+$(call inherit-product, vendor/motorola/astro/astro-vendor.mk)

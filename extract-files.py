@@ -20,7 +20,8 @@ from extract_utils.main import (
 )
 
 namespace_imports = [
-    'vendor/motorola/sm6225-common',
+    'vendor/motorola/sdm710-common',
+    'hardware/qcom/sdm845',
     'vendor/qcom/opensource/display',
 ]
 
@@ -47,7 +48,7 @@ extract_fns: extract_fns_user_type = {
 }
 
 module = ExtractUtilsModule(
-    'guamp',
+    'astro',
     'motorola',
     blob_fixups=blob_fixups,
     lib_fixups=lib_fixups,
@@ -59,6 +60,6 @@ module = ExtractUtilsModule(
 
 if __name__ == '__main__':
     utils = ExtractUtils.device_with_common(
-        module, 'sm6225-common', module.vendor
+        module, 'sdm710-common', module.vendor
     )
     utils.run()
